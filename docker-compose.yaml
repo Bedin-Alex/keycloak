@@ -1,0 +1,63 @@
+version: '3.7'
+services:
+
+  postgresql:
+    image: docker.io/bitnami/postgresql:latest
+    environment:
+      ALLOW_EMPTY_PASSWORD: yes
+      POSTGRESQL_USERNAME: bn_keycloak
+      POSTGRESQL_DATABASE: bitnami_keycloak
+    hostname: postgresql
+    container_name: postgresql
+    volumes:
+      - './postgresql_data:/bitnami/postgresql'
+    networks:
+      - keycloak-network
+
+  keycloak:
+    image: docker.io/bitnami/keycloak:latest
+    container_name: keycloak
+    ports:
+      - "8080:8080"
+    environment:
+      KEYCLOAK_CREATE_ADMIN_USER: true
+      KEYCLOAK_ADMIN_USER: "admin"
+      KEYCLOAK_ADMIN_PASSWORD: "admin"
+      KEYCLOAK_DATABASE_HOST: postgresql
+      KEYCLOAK_DATABASE_PORT: 5432
+      KEYCLOAK_DATABASE_NAME: bitnami_keycloak
+      KEYCLOAK_DATABASE_USER: bn_keycloak
+      # KEYCLOAK_DATABASE_PASSWORD: 
+      KEYCLOAK_DATABASE_SCHEMA: "public"
+    depends_on:
+      - postgresql
+    volumes:
+      - './theme:/opt/bitnami/keycloak/themes/mynewtheme'
+    networks:
+      - keycloak-network
+
+  nginx-base:
+    # image: nginx-keycloak
+    build: .
+    container_name: nginx-base
+    volumes:
+      - ./keycloak.conf:/etc/nginx/conf.d/nginx-ldap-auth.conf
+    ports:
+      - 3002:3002
+    networks:
+      - keycloak-network
+
+  app_1:
+    container_name: app_1
+    image: nginx
+    networks:
+      - keycloak-network
+    volumes:
+      - ./app1:/usr/share/nginx/html 
+
+networks:
+  keycloak-network:
+    driver: bridge
+
+# HELP
+# https://stackoverflow.com/questions/45352880/keycloak-invalid-parameter-redirect-uri
